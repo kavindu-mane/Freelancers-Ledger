@@ -2,6 +2,6 @@
  
 DB Migration
 ```bash
-    dotnet ef migrations add InitialCreate
+    dotnet ef migrations add migrationName
     dotnet ef database update
 ```
