@@ -1,3 +1,4 @@
+using System.Text;
 using API.Dtos.Account;
 using API.Interfaces;
 using API.Models;
@@ -17,7 +18,6 @@ namespace API.Controllers
         private readonly SignInManager<AppUser> _signInManager;
 
         private readonly IEmailService _emailService;
-        private readonly ILogger<AccountController> _logger;
 
         public AccountController(
             UserManager<AppUser> userManager,
@@ -31,7 +31,6 @@ namespace API.Controllers
             _tokenService = tokenService;
             _signInManager = signInManager;
             _emailService = emailService;
-            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -97,22 +96,19 @@ namespace API.Controllers
                     if (roleResults.Succeeded)
                     {
                         // confirm code
-                        var code = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
-                        _logger.LogInformation(
-                            $"Generated token for user {appUser.Email}: {code}"
-                        );
+                        var token = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
+                        // encode token
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
                         // dictionary of key value pairs
                         var queryParams = new Dictionary<string, string>
                         {
                             { "email", registerDto.Email },
-                            { "token", code },
+                            { "token", encodedToken },
                         };
 
                         // get domain
                         var domain = Environment.GetEnvironmentVariable("DOMAIN");
-                        // get api domain
-                        var apiDomain = Environment.GetEnvironmentVariable("API_DOMAIN");
 
                         // generate confirmation link
                         var confirmationLink = QueryHelpers.AddQueryString(
@@ -130,8 +126,9 @@ namespace API.Controllers
                             "{{name}}",
                             $"{registerDto.FirstName} {registerDto.LastName}"
                         );
-                        emailHtml = emailHtml.Replace("{{imageLink}}",
-                        $"{apiDomain}/images/verify_icon.png"
+                        emailHtml = emailHtml.Replace(
+                            "{{imageLink}}",
+                            "https://raw.githubusercontent.com/kavindu-mane/Freelancers-Ledger/main/API/wwwroot/images/verify_icon.png"
                         );
 
                         // send email
@@ -222,7 +219,7 @@ namespace API.Controllers
 
                 // generate token
                 var token = _tokenService.CreateToken(user);
-
+                
                 return Ok(
                     new
                     {
@@ -272,13 +269,10 @@ namespace API.Controllers
                         }
                     );
                 }
-
-                _logger.LogInformation(
-                    $"Received token for user {confirmEmailDto.Email}: {confirmEmailDto.Token}"
-                );
+                var decodedToken = System.Text.Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(confirmEmailDto.Token));
 
                 // confirm email
-                var result = await _userManager.ConfirmEmailAsync(user, confirmEmailDto.Token);
+                var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
 
                 if (result.Succeeded)
                 {
