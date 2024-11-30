@@ -17,18 +17,21 @@ namespace API.Controllers
         private readonly SignInManager<AppUser> _signInManager;
 
         private readonly IEmailService _emailService;
+        private readonly ILogger<AccountController> _logger;
 
         public AccountController(
             UserManager<AppUser> userManager,
             ITokenService tokenService,
             SignInManager<AppUser> signInManager,
-            IEmailService emailService
+            IEmailService emailService,
+            ILogger<AccountController> logger
         )
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _signInManager = signInManager;
             _emailService = emailService;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -55,6 +58,8 @@ namespace API.Controllers
                 {
                     Email = registerDto.Email,
                     UserName = registerDto.Email,
+                    FirstName = registerDto.FirstName,
+                    LastName = registerDto.LastName,
                 };
 
                 // check email exists
@@ -93,16 +98,21 @@ namespace API.Controllers
                     {
                         // confirm code
                         var code = await _userManager.GenerateEmailConfirmationTokenAsync(appUser);
+                        _logger.LogInformation(
+                            $"Generated token for user {appUser.Email}: {code}"
+                        );
 
                         // dictionary of key value pairs
                         var queryParams = new Dictionary<string, string>
                         {
-                            { "Email", registerDto.Email },
-                            { "Token", code },
+                            { "email", registerDto.Email },
+                            { "token", code },
                         };
 
                         // get domain
                         var domain = Environment.GetEnvironmentVariable("DOMAIN");
+                        // get api domain
+                        var apiDomain = Environment.GetEnvironmentVariable("API_DOMAIN");
 
                         // generate confirmation link
                         var confirmationLink = QueryHelpers.AddQueryString(
@@ -110,11 +120,25 @@ namespace API.Controllers
                             queryParams!
                         );
 
+                        // finalize email template
+                        string templatePath = "Templates/ConfirmEmail.html";
+                        string emailHtml = System.IO.File.ReadAllText(templatePath);
+
+                        // replace placeholders
+                        emailHtml = emailHtml.Replace("{{confirmationLink}}", confirmationLink);
+                        emailHtml = emailHtml.Replace(
+                            "{{name}}",
+                            $"{registerDto.FirstName} {registerDto.LastName}"
+                        );
+                        emailHtml = emailHtml.Replace("{{imageLink}}",
+                        $"{apiDomain}/images/verify_icon.png"
+                        );
+
                         // send email
                         await _emailService.SendEmailAsync(
                             registerDto.Email,
-                            "Confirm your email",
-                            $"Please confirm your email by clicking <a href='{confirmationLink}'>here</a>"
+                            "Confirm your email address",
+                            emailHtml
                         );
 
                         return Ok(
@@ -248,6 +272,10 @@ namespace API.Controllers
                         }
                     );
                 }
+
+                _logger.LogInformation(
+                    $"Received token for user {confirmEmailDto.Email}: {confirmEmailDto.Token}"
+                );
 
                 // confirm email
                 var result = await _userManager.ConfirmEmailAsync(user, confirmEmailDto.Token);

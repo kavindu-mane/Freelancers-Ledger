@@ -37,7 +37,7 @@ namespace API.Service
                 client.Credentials = new NetworkCredential(email, password);
 
                 var mailMessage = new MailMessage();
-                mailMessage.From = new MailAddress(email);
+                mailMessage.From = new MailAddress(email , "Freelancer's Leger Team");
                 mailMessage.To.Add(receiptor);
                 mailMessage.Subject = subject;
                 mailMessage.Body = body;

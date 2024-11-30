@@ -72,6 +72,12 @@ builder
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
+// Configure token provider options
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromHours(24); // Set token lifespan to 24 hours
+});
+
 // JWT Authentication
 builder
     .Services.AddAuthentication(options =>
@@ -145,6 +151,9 @@ var app = builder.Build();
 // Add authentication and authorization
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Enable serving static files from the wwwroot directory
+app.UseStaticFiles();
 
 // Add map controllers
 app.MapControllers();
