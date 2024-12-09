@@ -171,5 +171,4 @@ else
 
 // working message as json
 app.MapGet("/", () => Results.Ok(new { message = "API is working" }));
-
 app.Run("http://0.0.0.0:80");
