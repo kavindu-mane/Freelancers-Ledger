@@ -166,9 +166,10 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseHttpsRedirection();
+    app.UseHsts(); // HTTP Strict Transport Security
 }
 
 // working message as json
 app.MapGet("/", () => Results.Ok(new { message = "API is working" }));
 
-app.Run();
+app.Run("http://0.0.0.0:80");

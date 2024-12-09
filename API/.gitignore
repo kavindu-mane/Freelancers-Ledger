@@ -9,3 +9,6 @@
 
 # migrations
 /Migrations
+
+# publish
+publish/*
